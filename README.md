@@ -99,6 +99,51 @@ The script uses the Python standard library and will automatically use `certifi`
 
 ---
 
+## Current Raw Data Extract
+
+The repository includes an initial raw extract for:
+
+- Madrid
+- Barcelona
+- Valencia
+- Sevilla
+- Bilbao
+
+It was generated from the project root with:
+
+```bash
+uv run python scripts/extract_open_meteo.py --past-days 60 --forecast-days 7
+```
+
+This writes the raw CSV files to:
+
+```text
+data/raw/open_meteo/
+```
+
+Included raw files:
+
+```text
+raw_locations.csv
+raw_weather_daily.csv
+raw_forecast_daily.csv
+raw_air_quality_hourly.csv
+```
+
+DuckDB can read the raw CSV files directly. Example check:
+
+```bash
+uv run --with duckdb python -c "import duckdb; con=duckdb.connect(); print(con.read_csv('data/raw/open_meteo/raw_weather_daily.csv').count('*').fetchall())"
+```
+
+For the current extract, this returns:
+
+```text
+[(305,)]
+```
+
+---
+
 ## How the API Connection Works
 
 The extraction process has four steps.
