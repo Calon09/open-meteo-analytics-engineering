@@ -1,0 +1,36 @@
+version: 2
+
+sources:
+  - name: open_meteo_raw
+    description: Raw CSV files extracted from the Open-Meteo API.
+    meta:
+      external_location: "data/raw/open_meteo/{name}.csv"
+    tables:
+      - name: raw_locations
+        description: One row per city with location metadata from the Open-Meteo Geocoding API.
+        columns:
+          - name: location_id
+            tests:
+              - not_null
+              - unique
+
+      - name: raw_weather_daily
+        description: One row per city and historical weather date.
+        columns:
+          - name: location_id
+            tests:
+              - not_null
+
+      - name: raw_forecast_daily
+        description: One row per city, forecast date and extraction run.
+        columns:
+          - name: location_id
+            tests:
+              - not_null
+
+      - name: raw_air_quality_hourly
+        description: One row per city and hour with air quality metrics.
+        columns:
+          - name: location_id
+            tests:
+              - not_null
