@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: stg_locations
+    description: Cleaned location metadata from Open-Meteo.
+    columns:
+      - name: location_id
+        description: Unique identifier for each location.
+        tests:
+          - not_null
+          - unique
+      - name: city
+        tests:
+          - not_null
+      - name: country
+        tests:
+          - not_null
+
+  - name: stg_weather_daily
+    description: Cleaned historical daily weather data. Grain is one row per location and weather date.
+    columns:
+      - name: location_id
+        tests:
+          - not_null
+      - name: weather_date
+        tests:
+          - not_null
+
+  - name: stg_forecast_daily
+    description: Cleaned daily forecast data. Grain is one row per location, forecast date and extraction timestamp.
+    columns:
+      - name: location_id
+        tests:
+          - not_null
+      - name: forecast_date
+        tests:
+          - not_null
+      - name: extracted_at
+        tests:
+          - not_null
+
+  - name: stg_air_quality_hourly
+    description: Cleaned hourly air quality data. Grain is one row per location and measured timestamp.
+    columns:
+      - name: location_id
+        tests:
+          - not_null
+      - name: measured_at
+        tests:
+          - not_null
