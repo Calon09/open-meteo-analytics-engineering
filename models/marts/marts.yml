@@ -1,0 +1,154 @@
+version: 2
+
+models:
+  - name: dim_location
+    description: One row per analyzed Open-Meteo location.
+    columns:
+      - name: location_id
+        description: Primary key for each location.
+        tests:
+          - not_null
+          - unique
+      - name: city
+        tests:
+          - not_null
+      - name: country
+        tests:
+          - not_null
+      - name: latitude
+        tests:
+          - not_null
+      - name: longitude
+        tests:
+          - not_null
+
+  - name: fct_city_weather_day
+    description: Main daily weather fact table enriched with air-quality metrics and analytical flags. Grain is one row per location and weather_date.
+    columns:
+      - name: city_weather_day_id
+        description: Primary key for each location-date weather observation.
+        tests:
+          - not_null
+          - unique
+      - name: location_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_location')
+                field: location_id
+      - name: weather_date
+        tests:
+          - not_null
+      - name: temperature_mean_celsius
+        tests:
+          - not_null
+      - name: has_air_quality_data
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+      - name: is_rainy_day
+        tests: &mart_boolean_flag_tests
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+      - name: is_heavy_rain_day
+        tests: *mart_boolean_flag_tests
+      - name: is_hot_day
+        tests: *mart_boolean_flag_tests
+      - name: is_extreme_heat_day
+        tests: *mart_boolean_flag_tests
+      - name: is_windy_day
+        tests: *mart_boolean_flag_tests
+      - name: is_poor_air_quality_day
+        tests: *mart_boolean_flag_tests
+      - name: is_comfortable_temperature_day
+        tests: *mart_boolean_flag_tests
+      - name: is_comfortable_day
+        tests: *mart_boolean_flag_tests
+
+  - name: fct_air_quality_city_day
+    description: Daily air-quality fact table. Grain is one row per location and air_quality_date.
+    columns:
+      - name: air_quality_city_day_id
+        description: Primary key for each location-date air-quality rollup.
+        tests:
+          - not_null
+          - unique
+      - name: location_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_location')
+                field: location_id
+      - name: air_quality_date
+        tests:
+          - not_null
+      - name: air_quality_hour_count
+        tests:
+          - not_null
+      - name: is_poor_air_quality_day
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+
+  - name: mart_city_weather_summary
+    description: City-level summary mart for a City Comfort Index dashboard.
+    columns:
+      - name: location_id
+        description: Primary key for the city-level summary row.
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_location')
+                field: location_id
+      - name: city
+        tests:
+          - not_null
+      - name: total_days
+        description: Number of valid daily weather observations summarized.
+        tests:
+          - not_null
+      - name: avg_temperature_celsius
+        description: Average daily mean temperature.
+        tests:
+          - not_null
+      - name: total_precipitation_mm
+        description: Total precipitation over the summarized period.
+        tests:
+          - not_null
+      - name: rainy_days
+        description: Number of rainy days.
+        tests:
+          - not_null
+      - name: hot_days
+        description: Number of days with max temperature at or above 30 Celsius.
+        tests:
+          - not_null
+      - name: windy_days
+        description: Number of days with max wind speed at or above 30 km/h.
+        tests:
+          - not_null
+      - name: poor_air_quality_days
+        description: Number of days where max European AQI reached at least 60.
+        tests:
+          - not_null
+      - name: comfortable_days
+        description: Number of days that met the overall comfort-day flag.
+        tests:
+          - not_null
+      - name: comfort_score
+        description: Dashboard ranking score from 0 to 100; higher is more comfortable. It weights comfortable days, dry days, non-hot days, non-windy days, and non-poor-air-quality days.
+        tests:
+          - not_null

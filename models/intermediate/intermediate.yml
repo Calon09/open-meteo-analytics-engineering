@@ -1,0 +1,109 @@
+version: 2
+
+models:
+  - name: int_air_quality_daily
+    description: Daily air quality rollup by location. Grain is one row per location and air_quality_date.
+    columns:
+      - name: air_quality_day_id
+        description: Primary key for the daily air quality record.
+        tests:
+          - not_null
+          - unique
+      - name: location_id
+        description: Location identifier from stg_locations.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_locations')
+                field: location_id
+      - name: air_quality_date
+        description: Date of the hourly air quality readings.
+        tests:
+          - not_null
+      - name: air_quality_hour_count
+        description: Number of hourly readings included in the daily rollup.
+        tests:
+          - not_null
+      - name: avg_european_aqi
+        description: Average European AQI for the location-date.
+      - name: max_european_aqi
+        description: Maximum hourly European AQI for the location-date.
+
+  - name: int_city_day_weather
+    description: Daily weather observations enriched with daily air quality when available. Grain is one row per location and weather_date.
+    columns:
+      - name: city_day_weather_id
+        description: Primary key for the city-day weather record.
+        tests:
+          - not_null
+          - unique
+      - name: location_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_locations')
+                field: location_id
+      - name: weather_date
+        tests:
+          - not_null
+      - name: temperature_mean_celsius
+        description: Observed average daily temperature in Celsius.
+        tests:
+          - not_null
+      - name: has_air_quality_data
+        description: True when an air quality daily rollup exists for the same location and date.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+
+  - name: int_weather_flags
+    description: City-day weather records with dashboard-ready weather and air-quality flags.
+    columns:
+      - name: city_day_weather_id
+        tests:
+          - not_null
+          - unique
+      - name: location_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_locations')
+                field: location_id
+      - name: weather_date
+        tests:
+          - not_null
+      - name: is_rainy_day
+        description: True when daily rain or precipitation is greater than zero.
+        tests: &boolean_flag_tests
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+      - name: is_heavy_rain_day
+        description: True when daily precipitation is at least 10 mm.
+        tests: *boolean_flag_tests
+      - name: is_hot_day
+        description: True when maximum daily temperature is at least 30 Celsius.
+        tests: *boolean_flag_tests
+      - name: is_extreme_heat_day
+        description: True when maximum daily temperature is at least 35 Celsius.
+        tests: *boolean_flag_tests
+      - name: is_windy_day
+        description: True when maximum wind speed is at least 30 km/h.
+        tests: *boolean_flag_tests
+      - name: is_poor_air_quality_day
+        description: True when maximum daily European AQI is at least 60. False when air quality is unavailable; use has_air_quality_data to distinguish missing AQ data.
+        tests: *boolean_flag_tests
+      - name: is_comfortable_temperature_day
+        description: True when average daily temperature is between 18 and 26 Celsius.
+        tests: *boolean_flag_tests
+      - name: is_comfortable_day
+        description: True when the day has comfortable temperature and is not rainy, windy, hot, or poor-air-quality.
+        tests: *boolean_flag_tests
