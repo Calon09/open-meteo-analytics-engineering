@@ -1,0 +1,17 @@
+[project]
+name = "open-meteo-analytics-engineering"
+version = "1.0.0"
+description = "Weather analytics engineering project using Open-Meteo, dbt, DuckDB, and Streamlit."
+requires-python = ">=3.11"
+dependencies = [
+    "certifi>=2024.2.2",
+    "duckdb>=1.0.0",
+    "dbt-core>=1.8,<2",
+    "dbt-duckdb>=1.8,<2",
+    "pandas>=2.0",
+    "altair>=5.0",
+    "streamlit>=1.38",
+]
+
+[tool.uv]
+package = false

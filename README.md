@@ -1,5 +1,93 @@
 # Group Assignment: Weather Analytics Engineering with Open-Meteo
 
+## Project Guide: How to Run This Project
+
+This section documents how this group's implementation works end to end:
+extraction, dbt, and the Streamlit dashboard. Everything below this section
+is the original assignment brief, kept for reference.
+
+### Stack
+
+- DuckDB (local file `open_meteo.duckdb`, created by dbt, gitignored)
+- dbt Core with the `dbt-duckdb` adapter
+- Python + Streamlit
+- [uv](https://docs.astral.sh/uv/) for dependency management — no manual
+  virtualenv setup needed, every command below is run with `uv run`
+
+Cities covered: Madrid, Barcelona, Valencia, Seville, and Bilbao.
+
+### 1. How do I run the extraction?
+
+The committed raw CSVs in `data/raw/open_meteo/` already cover ~60 days of
+recent daily weather (2026-04-02 to 2026-06-01), a 7-day forecast, and ~5
+days of hourly air quality. To reproduce or refresh them:
+
+```bash
+uv run python scripts/extract_open_meteo.py --past-days 60 --forecast-days 7
+```
+
+This overwrites the four CSV files in `data/raw/open_meteo/`.
+
+### 2. How do I load the data and run dbt?
+
+dbt reads the raw CSV files directly as external sources (see
+`models/staging/open_meteo/sources.yml`) — there is no separate load step.
+`profiles.yml` (project root) points dbt at a local DuckDB file,
+`open_meteo.duckdb`, which is created the first time you run dbt:
+
+```bash
+uv run dbt run --profiles-dir .
+uv run dbt test --profiles-dir .
+```
+
+This builds 11 models (4 staging views, 3 intermediate views, 4 marts) and
+runs 107 data tests, all passing.
+
+### 3. How do I launch the dashboard?
+
+```bash
+uv run streamlit run streamlit_app/app.py
+```
+
+Open the URL Streamlit prints (default `http://localhost:8501`). The
+dashboard reads only from the dbt mart models in `open_meteo.duckdb`, so
+run step 2 at least once before launching it.
+
+### What final models power the dashboard?
+
+| Model | Grain | Used for |
+|---|---|---|
+| `dim_location` | one row per city | city names, country, lat/lon for the map |
+| `fct_city_weather_day` | one row per `location_id` + `weather_date` | daily temperature trend, temperature distribution, daily detail table |
+| `fct_air_quality_city_day` | one row per `location_id` + `air_quality_date` | air quality chart and coverage table |
+| `mart_city_weather_summary` | one row per city, aggregated over each city's full extracted period | comfort score ranking and KPI cards |
+
+The dashboard's main filters are **city** (multiselect) and a **date range**
+covering both the weather and air-quality dates.
+
+### Modeling choices
+
+- **Staging** (`stg_*`): rename raw columns to snake_case, cast types, and
+  deduplicate, keeping the same grain as the raw source.
+- **Intermediate**: `int_air_quality_daily` rolls hourly air quality up to
+  one row per city/day; `int_city_day_weather` joins daily weather with
+  location metadata and the daily air-quality rollup; `int_weather_flags`
+  adds boolean flags (rainy, heavy rain, hot, extreme heat, windy, poor air
+  quality, comfortable temperature, comfortable day).
+- **Marts**: `dim_location` and the fact tables (`fct_city_weather_day`,
+  `fct_air_quality_city_day`) expose the intermediate layer with stable
+  keys for the dashboard. `mart_city_weather_summary` aggregates
+  `fct_city_weather_day` per city into comfort metrics and a single 0-100
+  `comfort_score`, weighting comfortable-day rate (45%), dry days (20%),
+  non-hot days (15%), non-windy days (10%), and good-air-quality days (10%).
+- **Air quality coverage is sparse**: the hourly air-quality extract only
+  overlaps with a handful of recent/forecast days, so
+  `has_air_quality_data` flags which weather days actually have a matching
+  air-quality rollup. The dashboard surfaces this coverage explicitly
+  (an "Air quality data coverage" table) instead of hiding it.
+
+---
+
 ## Objective
 
 Build an end-to-end analytics engineering project using data extracted from the Open-Meteo API.
